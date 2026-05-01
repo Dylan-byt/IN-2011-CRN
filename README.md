@@ -12,6 +12,12 @@ This project only uses available libraries not using any external dependancy.
 
 To compile the code, all .java files in the same folder and compile it in the folder
 
+First you want to be in the correct folder run this command
+
+    cd [path to the folder containing the code] (in this case  "C:\Users\johns\OneDrive\Documents\GitHub\IN-2011-CRN\CRN\src"  )
+
+Then compile all the code with the command below
+
     javac *.java (command to compile the code)
 
 This will compile the node and any and all other java files provided.
@@ -24,23 +30,13 @@ To run the Azure lab smoke test, use:
 
     java AzureLabTest dylan.johnson@city.ac.uk 10.216.34.177
 
-If a specific port is needed, use:
-
-    java AzureLabTest dylan.johnson@city.ac.uk 10.216.34.177 20110
-
 The IP address should be changed if the Azure lab machine has a different 10.x.x.x address.
-
-I also used the local test program during development:
-
-    java LocalTest
-
-This creates a local node using port 20110 and checks the main CRN features without using the Azure lab nodes.
 
 To run this for the Azure Smoke Test, use dylan.johnson@city.ac.uk ip addr (dependant on the individual ip address)
 
-to run the Local Test use,
+to run the Local Test or Feature Test (personal one to test other feature (see. known limitations)) use,
 
-    java LocalTest
+    java LocalTest or java FeatureTest
 
 I have also successfully run this with both Azure smoke test and the original Local Test along with others i used to confirm other functionality.
 
