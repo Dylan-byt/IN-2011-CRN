@@ -45,9 +45,7 @@ public class FeatureTest {
         }
     }
 
-    // ============================================================
     // 1. Basic NodeInterface tests
-    // ============================================================
 
     private static void runBasicNetworkTests() throws Exception {
         System.out.println();
@@ -144,19 +142,14 @@ public class FeatureTest {
         addPeer(n3, "N:test2", "127.0.0.1:20112");
     }
 
-    /*
-     * This uses reflection only for local testing.
-     * Do not copy this into Node.java.
-     */
+    // Uses reflection to call the private recordAddress method to add peers directly to the node's peer map.
     private static void addPeer(Node node, String peerName, String address) throws Exception {
         Method recordAddress = Node.class.getDeclaredMethod("recordAddress", String.class, String.class);
         recordAddress.setAccessible(true);
         recordAddress.invoke(node, peerName, address);
     }
 
-    // ============================================================
     // 2. Raw RFC message-format tests
-    // ============================================================
 
     private static void runRawMessageTests() throws Exception {
         System.out.println();
@@ -240,9 +233,7 @@ public class FeatureTest {
         s.close();
     }
 
-    // ============================================================
     // 3. Malformed packet tests
-    // ============================================================
 
     private static void runMalformedMessageTests() throws Exception {
         System.out.println();
@@ -297,9 +288,7 @@ public class FeatureTest {
         checkSocket.close();
     }
 
-    // ============================================================
     // 4. Duplicate request tests
-    // ============================================================
 
     private static void runDuplicateRequestTest() throws Exception {
         System.out.println();
@@ -342,9 +331,8 @@ public class FeatureTest {
         s.close();
     }
 
-    // ============================================================
+
     // 5. Retransmission test using a fake UDP server
-    // ============================================================
 
     private static void runRetransmissionTest() throws Exception {
         System.out.println();
@@ -401,7 +389,7 @@ public class FeatureTest {
                         socket.receive(p);
                         receivedCount++;
                     } catch (SocketTimeoutException e) {
-                        // Normal timeout. Keep looping.
+                        // Ignore timeout
                     }
                 }
             } catch (Exception e) {
@@ -429,9 +417,7 @@ public class FeatureTest {
         }
     }
 
-    // ============================================================
     // Raw packet helpers
-    // ============================================================
 
     private static String sendRawAndReceivePayload(
 			DatagramSocket s,
@@ -563,9 +549,7 @@ public class FeatureTest {
         return sb.toString();
     }
 
-    // ============================================================
     // Test assertion helpers
-    // ============================================================
 
     private static void check(String name, boolean condition) {
         if (condition) {

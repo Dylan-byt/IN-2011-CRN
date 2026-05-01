@@ -101,6 +101,7 @@ KNOWN LIMITATIONS
 - Relay failure cases may not all be handled perfectly may encounter issues with some edge cases
 - Duplicate request handling has not been tested much and may run into issues
 - Azure subnet probing was added to help with lab test and is not a complete system.
+- FeatureTest is not exhaustive and may not test every feature completely as it was made quickly.
 
 
 ==============================
