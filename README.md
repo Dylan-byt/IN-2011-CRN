@@ -107,3 +107,19 @@ WireShark pcapng file attached
 The file along with the readme is the wire shark file with the evidence of the smoke test working with the provided code
 
 use udp.port == 20110 as the filter the look at No. from 6181 to 7708 to view the entire poem 
+
+=================
+Extra Information
+=================
+
+I deleted both LocalTest and FeatureTest files as i read
+
+2.2. Required ZIP Structure
+Your ZIP file must extract cleanly into a single directory containing:
+● Node.java
+● NodeInterface.java
+● <AnyAdditionalClass>.java
+● README.txt
+● capture.pcapng
+
+so i assume it was not needed.
