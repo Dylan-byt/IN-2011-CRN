@@ -470,7 +470,13 @@ public class Node implements NodeInterface {
             }
         }
 
-        processMessage(txID, message, senderAddr, senderPort);
+        try {
+            processMessage(txID, message, senderAddr, senderPort);
+        } catch (Exception e) {
+            debug("IGNORED malformed/problem message from "
+                    + senderAddr + ":" + senderPort
+                    + " msg=[" + message + "] error=" + e.getMessage());
+        }
 
             } catch (SocketTimeoutException e) {
                 checkRetransmissions();
