@@ -11,9 +11,9 @@ import java.util.concurrent.ConcurrentHashMap;
 // Coursework 2024/2025
 //
 // Submission by
-//  YOUR_NAME_GOES_HERE
-//  YOUR_STUDENT_ID_NUMBER_GOES_HERE
-//  YOUR_EMAIL_GOES_HERE
+//  Dylan Johnson
+//  240032948
+//  dylan.johnson@city.ac.uk
 
 // DO NOT EDIT starts
 // This gives the interface that your code must implement.
@@ -90,7 +90,7 @@ interface NodeInterface {
 
 
 public class Node implements NodeInterface {
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
     private static final int RETRANSMIT_INTERVAL_MS = 5000;
     private static final int MAX_RETRIES = 3;
     private static final int SOCKET_TIMEOUT_MS = 100;
@@ -116,6 +116,7 @@ public class Node implements NodeInterface {
 
     private final Random random = new Random();
 
+    // Stores information needed to return a relayed response to the original sender
     private static class RelayInfo {
         String originalAddress;
         int originalPort;
@@ -123,16 +124,21 @@ public class Node implements NodeInterface {
 
         RelayInfo(String addr, int port, int relayTxID) {
             this.originalAddress = addr;
+            this.originalAddress = addr;
             this.originalPort = port;
             this.relayTxID = relayTxID;
         }
     }
 
+    // Used to debug various partsd of the system. I used it for the smoke test as i wasn't sure why it wasn't working.
+    // if you want to see it go then, just set DEBUG to true at the top of the class. It will print out all messages sent and received, as well as learned addresses.
     private void debug(String msg) {
         if (DEBUG) {
             System.out.println("[NODE DEBUG] " + msg);
         }
     }
+
+    // Stores information about a request waiting for a response
     private static class PendingRequest {
         String targetAddress;
         int targetPort;
@@ -153,6 +159,7 @@ public class Node implements NodeInterface {
         }
     }
 
+    //Stores the result of decoding a CRN string
     private static class DecodeResult {
         String value;
         int endPos;
@@ -175,11 +182,13 @@ public class Node implements NodeInterface {
 
     // ===== Configuration Methods =====
 
+    //Sets this node's CRN node name and calculates its hash ID.
     public void setNodeName(String name) throws Exception {
         this.nodeName = name;
         this.nodeHashID = HashID.computeHashID(name);
     }
 
+    // Opens a UDP socket on the given port and records the local address for this node.
     public void openPort(int portNumber) throws Exception {
         this.port = portNumber;
         this.socket = new DatagramSocket(portNumber);
@@ -190,10 +199,12 @@ public class Node implements NodeInterface {
     }
 
 
+    // Records own node address. Was one of the methods i had to get the smoke test to work, as boot strap relied on nodes knowing their own address to work
     public void addOwnAddress(String ipAddress, int portNumber) throws Exception {
         recordAddress(nodeName, ipAddress + ":" + portNumber);
     }
 
+    // Used for testing to see what addresses the node currently knows about.
     public void debugKnownAddresses() {
         System.out.println("Known address pairs:");
         for (Map.Entry<String, String> entry : addressPairs.entrySet()) {
@@ -201,6 +212,7 @@ public class Node implements NodeInterface {
         }
     }
 
+    // This method tries to find the best local IP address to use for bootstrapping and communication. Mainly for smoke testing
     private String getBestLocalAddress() {
         try {
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
@@ -239,6 +251,8 @@ public class Node implements NodeInterface {
 
     // ===== CRN String Encoding / Decoding =====
 
+    // Encodes a Java string into the CRN string format:
+    // number of spaces + " " + string value + " "
     private String encodeString(String s) {
         int spaceCount = 0;
 
@@ -251,6 +265,8 @@ public class Node implements NodeInterface {
         return spaceCount + " " + s + " ";
     }
 
+    // Decodes a CRN string starting from the given position in the message.
+    // Returns the decoded string and the position of the next character after the string.
     private DecodeResult decodeString(String msg, int startPos) throws Exception {
         int spaceIdx = msg.indexOf(' ', startPos);
 
@@ -283,6 +299,7 @@ public class Node implements NodeInterface {
         return new DecodeResult(value, pos + 1);
     }
 
+    // Removes a leading space from the content if it exists.
     private String stripLeadingSpace(String content) {
         if (content.startsWith(" ")) {
             return content.substring(1);
@@ -290,6 +307,7 @@ public class Node implements NodeInterface {
         return content;
     }
 
+    // Converts a 64-character hexadecimal string into a 32-byte array.
     private byte[] hexStringToBytes(String hex) throws Exception {
         if (hex.length() != 64) {
             throw new Exception("Invalid hashID length");
@@ -311,6 +329,7 @@ public class Node implements NodeInterface {
         return bytes;
     }
 
+    // Converts a byte array into a hexadecimal string.
     private String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
 
@@ -323,6 +342,8 @@ public class Node implements NodeInterface {
 
     // ===== Distance Calculation =====
 
+    // Calculates the distance between two hash IDs as defined in the RFC.
+    // distance is 256 minus the number of matching leading bits.
     private int calculateDistance(byte[] hash1, byte[] hash2) {
         int matchingBits = 0;
 
@@ -343,6 +364,8 @@ public class Node implements NodeInterface {
 
     // ===== UDP Packet Helpers =====
 
+    // Builds a complete UDP packet using the CRN format:
+    // two-byte transaction ID, one space, then the message body.
     private byte[] buildPacket(byte[] txID, String content) {
         byte[] payload = content.getBytes(StandardCharsets.UTF_8);
 
@@ -355,6 +378,7 @@ public class Node implements NodeInterface {
         return fullMessage;
     }
 
+    // Sends a message to the given address and port with the specified transaction ID.
     private void sendMessage(byte[] txID, String content, String addr, int port) throws Exception {
         byte[] fullMessage = buildPacket(txID, content);
 
@@ -386,6 +410,7 @@ public class Node implements NodeInterface {
 
     // ===== Message Handling =====
 
+    // Handles incoming UDP packets for up to delay milliseconds. If delay is zero, waits indefinitely until a packet is received.
     public void handleIncomingMessages(int delay) throws Exception {
         long startTime = System.currentTimeMillis();
 
@@ -465,6 +490,7 @@ public class Node implements NodeInterface {
         cleanupStaleAddresses();
     }
 
+    // Processes a received message based on its type and content.
     private void processMessage(byte[] txID, String message, String senderAddr, int senderPort) throws Exception {
         if (message == null || message.length() < 1) {
             return;
@@ -529,6 +555,7 @@ public class Node implements NodeInterface {
         }
     }
 
+    // Returns true if the message type is a CRN response type.
     private boolean isResponseType(char msgType) {
     return msgType == 'H'
             || msgType == 'O'
@@ -543,10 +570,12 @@ public class Node implements NodeInterface {
             || msgType == 'R';
     }
 
+    // Handles a name request and replies with this node's name.
     private void handleNameRequest(byte[] txID, String addr, int port) throws Exception {
         sendMessage(txID, "H " + encodeString(nodeName), addr, port);
     }
 
+    // Handles a name response and records the sender's node name and address.
     private void handleNameResponse(String content, String senderAddr, int senderPort) throws Exception {
         content = stripLeadingSpace(content);
 
@@ -561,6 +590,7 @@ public class Node implements NodeInterface {
         }
     }
 
+    // Handles a nearest-node request and replies with up to three known address pairs closest to the target hash.
     private void handleNearestRequest(byte[] txID, String content, String addr, int port) throws Exception {
         String hashText = stripLeadingSpace(content);
 
@@ -605,6 +635,7 @@ public class Node implements NodeInterface {
         sendMessage(txID, "O " + response, addr, port);
     }
 
+    //Handles a nearest-node response and records any address pairs it contains.
     private void handleNearestResponse(String content) throws Exception {
         content = stripLeadingSpace(content);
 
@@ -627,6 +658,7 @@ public class Node implements NodeInterface {
         }
     }
 
+    // Handles an existence request for a key and replies using F Y, F N, or F ?.
     private void handleKeyExistenceRequest(byte[] txID, String content, String addr, int port) throws Exception {
         content = stripLeadingSpace(content);
 
@@ -649,6 +681,7 @@ public class Node implements NodeInterface {
         }
     }
 
+    // Handles a read request for a key and replies with S Y value, S N, or S ?.
     private void handleReadRequest(byte[] txID, String content, String addr, int port) throws Exception {
         content = stripLeadingSpace(content);
 
@@ -674,6 +707,7 @@ public class Node implements NodeInterface {
         }
     }
 
+    // Handles a write request for a key and replies with X A, X R, or X X.
     private void handleWriteRequest(byte[] txID, String content, String addr, int port) throws Exception {
         content = stripLeadingSpace(content);
 
@@ -721,6 +755,8 @@ public class Node implements NodeInterface {
         }
     }
 
+    // Handles a compare-and-swap request atomically and replies using D R, D N,
+    // D A, or D X.
     private void handleCASRequest(byte[] txID, String content, String addr, int port) throws Exception {
         content = stripLeadingSpace(content);
 
@@ -781,6 +817,7 @@ public class Node implements NodeInterface {
         }
     }
 
+    //Handles a relay request by forwarding the embedded message to the target node.
     private void handleRelayRequest(byte[] txID, String content, String addr, int port) throws Exception {
         content = stripLeadingSpace(content);
 
@@ -801,6 +838,7 @@ public class Node implements NodeInterface {
         forwardToNode(embeddedTxIDBytes, targetNode, embeddedMessage);
     }
 
+    //Handles a response to one of this node's pending requests.
     private void handleResponse(int txID, char msgType, String content, String senderAddr, int senderPort) throws Exception {
         String fullResponse = msgType + content;
 
@@ -830,6 +868,8 @@ public class Node implements NodeInterface {
 
     // ===== Address Table Management =====
 
+    // Records an address key/value pair if it is valid
+    // Enforces the limit of three address pairs per distance
     private void recordAddress(String key, String addrPort) throws Exception {
         if (key == null || !key.startsWith("N:")) {
             return;
@@ -903,6 +943,7 @@ public class Node implements NodeInterface {
         }
     }
 
+    //Checks whether an address value is in the form IP:port.
     private boolean isValidAddressValue(String addrPort) {
         if (addrPort == null) {
             return false;
@@ -922,6 +963,7 @@ public class Node implements NodeInterface {
         }
     }
 
+    // Removes addresses that haven't been seen in a while to prevent the address table from filling up with stale entries.
     private void cleanupStaleAddresses() {
         long now = System.currentTimeMillis();
         List<String> removeKeys = new ArrayList<>();
@@ -944,6 +986,7 @@ public class Node implements NodeInterface {
         }
     }
 
+    // Returns true if this node knows at least one other real N: node.
     private boolean hasKnownPeers() {
         for (String key : addressPairs.keySet()) {
             if (!key.equals(nodeName) && key.startsWith("N:")) {
@@ -954,6 +997,7 @@ public class Node implements NodeInterface {
         return false;
     }
 
+    //Returns the known nodes closest to the given hash ID.
     private List<String> getClosestNodes(byte[] keyHash, int count) throws Exception {
         List<Map.Entry<String, Integer>> distances = new ArrayList<>();
 
@@ -983,6 +1027,7 @@ public class Node implements NodeInterface {
         return closest;
     }
 
+    // Returns true if this node is one of the closest nodes to the given key hash.
     private boolean isClosestNode(byte[] keyHash) throws Exception {
         List<String> closest = getClosestNodes(keyHash, 3);
         return closest.contains(nodeName);
@@ -990,6 +1035,7 @@ public class Node implements NodeInterface {
 
     // ===== Bootstrap / Discovery =====
 
+    //Attempts to discover peers by probing localhost and the local Azure subnet.
     private void bootstrapNetwork() throws Exception {
         if (hasKnownPeers()) {
             return;
@@ -1040,6 +1086,7 @@ public class Node implements NodeInterface {
         }
     }
 
+    //Sends name requests to all CRN ports on a given IP address.
         private void probeAddressRange(String ipAddress, List<Integer> probes) {
         for (int p = BOOTSTRAP_PORT_START; p <= BOOTSTRAP_PORT_END; p++) {
             try {
@@ -1074,6 +1121,7 @@ public class Node implements NodeInterface {
         }
     }
 
+    //Attempts to discover the address of a node by asking known close nodes.
     private void discoverNodeAddress(String targetNodeName) throws Exception {
         if (addressPairs.containsKey(targetNodeName)) {
             return;
@@ -1101,6 +1149,7 @@ public class Node implements NodeInterface {
 
     // ===== Retransmission =====
 
+    // Checks pending requests and retransmits any request that has timed out
     private void checkRetransmissions() throws Exception {
         long now = System.currentTimeMillis();
         List<Integer> cancelled = new ArrayList<>();
@@ -1134,6 +1183,7 @@ public class Node implements NodeInterface {
 
     // ===== Sending Requests =====
 
+    //Wraps a message in one or more relay messages according to the relay stack
     private String wrapRelayMessage(String original, String finalDestination) throws Exception {
         String wrapped = original;
 
@@ -1152,6 +1202,7 @@ public class Node implements NodeInterface {
         return wrapped;
     }
 
+    //Sends a message directly to a known node name
     private void forwardToNode(byte[] txID, String targetNodeName, String message) throws Exception {
         String addrPort = addressPairs.get(targetNodeName);
 
@@ -1180,6 +1231,7 @@ public class Node implements NodeInterface {
         socket.send(packet);
     }
 
+    //Sends a request to a node and waits for the matching response, handling incoming messages and retransmissions while waiting. Returns the response body or null if no response is received within the timeout.
     private String sendRequestAndWait(String targetNodeName, String message) throws Exception {
         String firstHop = targetNodeName;
 
@@ -1254,6 +1306,7 @@ public class Node implements NodeInterface {
 
     // ===== Interface Methods =====
 
+    // Checks whether another node is reachable and returns the correct node name
     public boolean isActive(String targetNodeName) throws Exception {
         handleIncomingMessages(SOCKET_TIMEOUT_MS);
 
@@ -1279,6 +1332,7 @@ public class Node implements NodeInterface {
         return decoded.value.equals(targetNodeName);
     }
 
+    //Adds a node to the relay stack so future requests are sent through it
     public void pushRelay(String targetNodeName) throws Exception {
         if (!addressPairs.containsKey(targetNodeName)) {
             discoverNodeAddress(targetNodeName);
@@ -1289,12 +1343,14 @@ public class Node implements NodeInterface {
         }
     }
 
+    //Removes the top node from the relay stack 
     public void popRelay() throws Exception {
         if (!relayStack.isEmpty()) {
             relayStack.pop();
         }
     }
 
+    //Checks whether a key exists 
     public boolean exists(String key) throws Exception {
         handleIncomingMessages(SOCKET_TIMEOUT_MS);
 
@@ -1341,6 +1397,7 @@ public class Node implements NodeInterface {
         return false;
     }
 
+    //Reads the value of a key, returning null if the key doesn't exist or no response is received within the timeout.
     public String read(String key) throws Exception {
         handleIncomingMessages(SOCKET_TIMEOUT_MS);
 
@@ -1414,6 +1471,7 @@ public class Node implements NodeInterface {
         return null;
     }
 
+    //Writes a key/value pair to the CRN network and returns true if the write is successful or false if no response is received within the timeout or all responses indicate failure.
     public boolean write(String key, String value) throws Exception {
         handleIncomingMessages(SOCKET_TIMEOUT_MS);
 
@@ -1458,6 +1516,7 @@ public class Node implements NodeInterface {
         return success;
     }
 
+    //Performs an atomic compare-and-swap operation on a key and returns true if the swap is successful or false if no response is received within the timeout, all responses indicate failure, or any response indicates that the key doesn't exist.
     public boolean CAS(String key, String currentValue, String newValue) throws Exception {
         handleIncomingMessages(SOCKET_TIMEOUT_MS);
 
@@ -1492,7 +1551,6 @@ public class Node implements NodeInterface {
                     }
                 }
 
-                // Compatibility with old direct format.
                 if (responseType == 'R' || responseType == 'A') {
                     success = true;
                 }
@@ -1503,6 +1561,7 @@ public class Node implements NodeInterface {
         return success;
     }
 
+    //Checks whether the given IP address and port are already known
     private boolean addressAlreadyKnown(String addr, int port) {
     String addrPort = addr + ":" + port;
 
@@ -1513,8 +1572,9 @@ public class Node implements NodeInterface {
     }
 
     return false;
-}
+    }
 
+    //Sends a name request to an unknown peer that has contacted this node and records the address if a valid response is received.
     private void requestNameFromPeer(String addr, int port) {
         try {
             if (addressAlreadyKnown(addr, port)) {
